@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>SocialFinder</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="hero">
+
+        <h1>🔍 SocialFinder</h1>
+
+        <p>
+            Search usernames across multiple platforms
+        </p>
+
+    </div>
+
+    <div class="search-container">
+
+        <form method="POST">
+
+            <input
+                class="form-control search-input"
+                type="text"
+                name="username"
+                placeholder="Enter Username"
+                required>
+
+            <button
+                type="submit"
+                class="btn-search">
+
+                Search
+
+            </button>
+
+        </form>
+
+    </div>
+
+    {% if results %}
+
+    <div class="stats">
+
+        <div class="stat-card">
+            <h2>{{ found_count }}</h2>
+            <p>Profiles Found</p>
+        </div>
+
+        <div class="stat-card">
+            <h2>{{ results|length }}</h2>
+            <p>Sites Checked</p>
+        </div>
+
+        <div class="stat-card">
+            <h2>{{ username }}</h2>
+            <p>Username</p>
+        </div>
+
+    </div>
+
+    <!-- FOUND SECTION -->
+
+    <h2 class="results-title text-success">
+        ✅ Found Profiles
+    </h2>
+
+    <div class="row g-4">
+
+        {% for result in results %}
+
+            {% if result.found %}
+
+            <div class="col-md-4">
+
+                <div class="card card-custom">
+
+                    <div class="card-body">
+
+                        <div class="platform-name">
+                            {{ result.site }}
+                        </div>
+
+                        <div class="found">
+                            ✅ Profile Found
+                        </div>
+
+                        <a
+                            href="{{ result.url }}"
+                            target="_blank"
+                            class="profile-btn">
+
+                            Open Profile
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+        {% endfor %}
+
+    </div>
+
+    <br>
+    <br>
+
+    <!-- NOT FOUND SECTION -->
+
+    <h2 class="results-title text-danger">
+        ❌ Not Found
+    </h2>
+
+    <div class="row g-4">
+
+        {% for result in results %}
+
+            {% if not result.found %}
+
+            <div class="col-md-4">
+
+                <div class="card card-custom">
+
+                    <div class="card-body">
+
+                        <div class="platform-name">
+                            {{ result.site }}
+                        </div>
+
+                        <div class="not-found">
+                            ❌ Not Found
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+    <footer>
+
+        <p>
+            SocialFinder OSINT Explorer
+        </p>
+
+    </footer>
+
+</div>
+
+</body>
+</html>
