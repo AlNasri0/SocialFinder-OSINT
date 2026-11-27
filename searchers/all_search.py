@@ -154,6 +154,10 @@ def _check_site(site, template, username):
             final_url = response.url
             final_host = _host(final_url)
 
+            # A cross-domain redirect (including a redirected 404) is not
+            # evidence that the requested platform profile is missing.
+            if final_host != requested_host:
+                return _result(site, url, detail="Not confirmed: the profile URL redirected away from the platform. The account may still exist.", http_status=code)
             if code in (404, 410):
                 return _result(site, url, "not_found",
                                "The platform returned an HTTP missing-page response.", code)
@@ -171,16 +175,16 @@ def _check_site(site, template, username):
                 return _result(site, url, detail="Not confirmed: the platform returned a non-profile response type.", http_status=code)
 
             body = _read_limited(response)
+            # Security challenges and generic login shells take precedence over
+            # phrases that might appear in their boilerplate text.
+            if any(marker in body for marker in BLOCK_PAGE_MARKERS):
+                return _result(site, url, detail="Not confirmed: the platform showed a security or anti-bot page. The account may still exist.", http_status=code)
             if _missing_profile(body):
                 return _result(site, url, "not_found",
                                "The page explicitly indicates that this profile is unavailable.", code)
 
-            # Do not accept login pages, generic homepages, or cross-domain
-            # redirects as evidence that the requested profile exists.
-            if final_host != requested_host:
-                return _result(site, url, detail="Not confirmed: the profile URL redirected away from the platform. The account may still exist.", http_status=code)
-            if any(marker in body for marker in BLOCK_PAGE_MARKERS):
-                return _result(site, url, detail="Not confirmed: the platform showed a security or anti-bot page. The account may still exist.", http_status=code)
+            # Do not accept generic homepages as evidence that the requested
+            # profile exists.
             if not _path_contains_username(final_url, username):
                 return _result(site, url, detail="Not confirmed: the final URL did not retain the requested handle.", http_status=code)
             if not _has_profile_evidence(body, username):
