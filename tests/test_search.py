@@ -165,6 +165,31 @@ class SearchTests(unittest.TestCase):
         result = self.check(response, "https://www.tiktok.com/@{}")
         self.assertEqual(result["status"], "found")
 
+    def test_twitch_generic_channel_shell_is_not_found(self):
+        response = FakeResponse(
+            body='<meta property="og:title" content="testuser"> testuser channel profile data',
+            url="https://www.twitch.tv/testuser",
+        )
+        result = self.check(response, "https://www.twitch.tv/{}")
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("Twitch returned a generic channel page", result["detail"])
+
+    def test_twitch_structured_matching_channel_data_is_found(self):
+        response = FakeResponse(
+            body='{"channelID":"12345","login":"testuser","displayName":"TestUser"}',
+            url="https://www.twitch.tv/testuser",
+        )
+        result = self.check(response, "https://www.twitch.tv/{}")
+        self.assertEqual(result["status"], "found")
+
+    def test_twitch_structured_different_login_is_not_found(self):
+        response = FakeResponse(
+            body='{"channelID":"12345","login":"someoneelse","displayName":"Someone"}',
+            url="https://www.twitch.tv/testuser",
+        )
+        result = self.check(response, "https://www.twitch.tv/{}")
+        self.assertEqual(result["status"], "not_found")
+
     def test_redirect_to_another_host_is_not_found(self):
         response = FakeResponse(url="https://login.example.net/testuser")
         result = self.check(response)
