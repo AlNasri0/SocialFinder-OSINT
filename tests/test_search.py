@@ -81,6 +81,13 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(result["status"], "not_found")
         self.assertIn("enough profile-specific", result["detail"])
 
+    def test_generic_user_not_found_boilerplate_is_not_missing_profile_evidence(self):
+        response = FakeResponse(
+            body='<html><body>Welcome testuser</body><footer>Recent comments: user not found</footer></html>'
+        )
+        result = self.check(response)
+        self.assertIn("enough profile-specific", result["detail"])
+
     def test_profile_evidence_is_found(self):
         result = self.check(FakeResponse())
         self.assertEqual(result["status"], "found")
