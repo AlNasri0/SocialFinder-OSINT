@@ -32,15 +32,15 @@ class SearchTests(unittest.TestCase):
     def test_http_410_is_confirmed_missing(self):
         self.assertEqual(self.check(FakeResponse(status=410))["status"], "not_found")
 
-    def test_forbidden_is_unverified_not_missing(self):
+    def test_forbidden_is_not_found_not_missing(self):
         result = self.check(FakeResponse(status=403))
-        self.assertEqual(result["status"], "unverified")
+        self.assertEqual(result["status"], "not_found")
 
-    def test_rate_limit_is_unverified(self):
-        self.assertEqual(self.check(FakeResponse(status=429))["status"], "unverified")
+    def test_rate_limit_is_not_found(self):
+        self.assertEqual(self.check(FakeResponse(status=429))["status"], "not_found")
 
-    def test_server_error_is_unverified(self):
-        self.assertEqual(self.check(FakeResponse(status=503))["status"], "unverified")
+    def test_server_error_is_not_found(self):
+        self.assertEqual(self.check(FakeResponse(status=503))["status"], "not_found")
 
     def test_generic_social_site_is_not_marked_found(self):
         response = FakeResponse(url="https://www.instagram.com/testuser/")
@@ -57,7 +57,7 @@ class SearchTests(unittest.TestCase):
 
     def test_username_in_generic_page_is_not_enough(self):
         response = FakeResponse(body="welcome testuser, generic home page")
-        self.assertEqual(self.check(response)["status"], "unverified")
+        self.assertEqual(self.check(response)["status"], "not_found")
 
     def test_tiktok_at_handle_matches_requested_username(self):
         self.assertTrue(all_search._path_contains_username(
@@ -110,18 +110,18 @@ class SearchTests(unittest.TestCase):
         result = self.check(response, "https://www.tiktok.com/@{}")
         self.assertEqual(result["status"], "found")
 
-    def test_redirect_to_another_host_is_unverified(self):
+    def test_redirect_to_another_host_is_not_found(self):
         response = FakeResponse(url="https://login.example.net/testuser")
-        self.assertEqual(self.check(response)["status"], "unverified")
+        self.assertEqual(self.check(response)["status"], "not_found")
 
-    def test_redirect_to_wrong_path_is_unverified(self):
+    def test_redirect_to_wrong_path_is_not_found(self):
         response = FakeResponse(url="https://example.com/home")
-        self.assertEqual(self.check(response)["status"], "unverified")
+        self.assertEqual(self.check(response)["status"], "not_found")
 
-    def test_timeout_is_unverified(self):
+    def test_timeout_is_not_found(self):
         with patch("searchers.all_search.requests.get", side_effect=all_search.requests.Timeout):
             result = all_search._check_site("Example", "https://example.com/{}", "testuser")
-        self.assertEqual(result["status"], "unverified")
+        self.assertEqual(result["status"], "not_found")
 
     def test_invalid_username_returns_no_results(self):
         self.assertEqual(list(all_search.iter_username_results("bad username")), [])
@@ -129,7 +129,7 @@ class SearchTests(unittest.TestCase):
 
     def test_parallel_results_are_grouped_and_sorted(self):
         fake_sites = {"Zulu": "https://zulu.test/{}", "Beta": "https://beta.test/{}", "Alpha": "https://alpha.test/{}"}
-        statuses = {"Zulu": "not_found", "Beta": "unverified", "Alpha": "found"}
+        statuses = {"Zulu": "not_found", "Beta": "not_found", "Alpha": "found"}
 
         def fake_check(site, template, username):
             return {"site": site, "url": template.format(username), "status": statuses[site]}
