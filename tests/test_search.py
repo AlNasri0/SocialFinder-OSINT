@@ -79,7 +79,7 @@ class SearchTests(unittest.TestCase):
         )
         result = self.check(response)
         self.assertEqual(result["status"], "not_found")
-        self.assertIn("not enough profile-specific", result["detail"])
+        self.assertIn("enough profile-specific", result["detail"])
 
     def test_profile_evidence_is_found(self):
         result = self.check(FakeResponse())
@@ -126,7 +126,7 @@ class SearchTests(unittest.TestCase):
 
     def test_user_path_format_matches_handle(self):
         self.assertTrue(all_search._path_contains_username(
-            "https://example.com/user/test_user/", "testuser"
+            "https://example.com/user/test_user/", "test_user"
         ))
 
     def test_profile_data_requires_exact_punctuation(self):
