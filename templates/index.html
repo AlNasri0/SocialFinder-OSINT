@@ -54,7 +54,7 @@
 
     <section class="notice">
       <span class="notice-icon">ⓘ</span>
-      <p><strong>Important accuracy note.</strong> “Found” means the response contained profile-specific evidence matching the requested username. “Not found” is reserved for explicit missing-profile responses. “Not found” means this automated check could not confirm a matching public profile. Some platforms block automated requests, so this result is not proof that an account does not exist. A matching username is not identity verification.</p>
+      <p><strong>Important accuracy note.</strong> “Found” means the response contained profile-specific evidence matching the requested username. “Not found” means this automated check did not confirm a matching public profile. A clear 404/410 or explicit unavailable-profile message is evidence that the page is missing; blocks, rate limits, timeouts, server errors, and generic pages can also produce “Not found” because this interface uses only two labels. Read each result’s detail before drawing a conclusion. A “Not found” result is not proof that an account does not exist, and a matching username is not identity verification.</p>
     </section>
     <footer><span>Social Finder</span><span>Public profile URL checker · <a href="https://github.com/AlNasri0/SocialFinder-OSINT" target="_blank" rel="noopener noreferrer">Open source ↗</a></span></footer>
   </main>
@@ -73,6 +73,7 @@
     const checkedLabel = document.getElementById("checked-label");
     let resultCounts = {found: 0, not_found: 0};
     let activeFilter = "all";
+    let activeController = null;
 
     function updateProgress(done, total) {
       const percent = total ? Math.round(done / total * 100) : 0;
@@ -110,13 +111,8 @@
       const code = document.createElement("span"); code.className = "http-code";
       code.textContent = item.http_status ? "HTTP " + item.http_status : "No response";
       const link = document.createElement("a"); link.className = "visit-link";
-      link.href = item.url; link.target = "_blank"; link.rel = "noopener noreferrer";
-      link.textContent = "Open profile ↗";
+      link.textContent = "Open matching profile ↗";
       if (item.status === "found") {
-        link.href = item.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = "Open matching profile ↗";
         bottom.append(code, link);
       } else {
         const noLink = document.createElement("span");
@@ -148,6 +144,9 @@
         alertBox.hidden = false; return;
       }
       alertBox.hidden = true;
+      if (activeController) activeController.abort();
+      const controller = new AbortController();
+      activeController = controller;
       button.disabled = true;
       button.innerHTML = '<span>Checking…</span><span class="spinner"></span>';
       resultsSection.hidden = false;
@@ -161,15 +160,20 @@
         const response = await fetch("/stream", {
           method: "POST",
           headers: {"Content-Type": "application/x-www-form-urlencoded"},
-          body: new URLSearchParams({username})
+          body: new URLSearchParams({username}),
+          signal: controller.signal
         });
         if (!response.ok) {
           const message = await response.text();
           throw new Error(message || "Search request failed.");
         }
+        if (!response.body || typeof response.body.getReader !== "function") {
+          throw new Error("The server did not provide a readable progress stream.");
+        }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let receivedComplete = false;
         while (true) {
           const {value, done} = await reader.read();
           if (done) break;
@@ -180,9 +184,21 @@
             const line = eventText.split("\n").find(line => line.startsWith("data: "));
             if (!line) continue;
             const event = JSON.parse(line.slice(6));
-            if (event.type === "result") {
-              resultCounts[event.result.status] += 1;
-              const card = createCard(event.result);
+            if (event.type === "result" && event.result) {
+              const result = event.result;
+              result.status = result.status === "found" ? "found" : "not_found";
+              if (result.status === "found") {
+                try {
+                  const safeUrl = new URL(result.url);
+                  if (safeUrl.protocol !== "https:") throw new Error("Unsafe profile URL");
+                  result.url = safeUrl.href;
+                } catch (_) {
+                  result.status = "not_found";
+                  result.detail = "Not confirmed: the returned profile link was invalid or unsafe.";
+                }
+              }
+              resultCounts[result.status] += 1;
+              const card = createCard(result);
               // Keep Found cards grouped at the top and alphabetically sorted
               // within each group, even while streamed checks are still arriving.
               const cards = [...grid.querySelectorAll(".result-card"), card];
@@ -194,14 +210,20 @@
               grid.replaceChildren(...cards);
               updateCounts(); updateProgress(event.completed, event.total);
             } else if (event.type === "complete") {
+              receivedComplete = true;
               updateProgress(event.completed, event.total);
             }
           }
         }
+        if (!receivedComplete) {
+          throw new Error("The search stream ended before all platforms finished. The results shown may be incomplete.");
+        }
       } catch (error) {
+        if (error.name === "AbortError") return;
         alertBox.textContent = error.message || "Search failed. Please try again.";
         alertBox.hidden = false;
       } finally {
+        if (activeController === controller) activeController = null;
         button.disabled = false;
         button.innerHTML = '<span>Search profiles</span><span aria-hidden="true">↗</span>';
       }
