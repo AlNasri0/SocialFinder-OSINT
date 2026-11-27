@@ -6,24 +6,21 @@ A Flask-based public username profile checker for a curated set of social, creat
 
 A website returning HTTP 200 does **not** prove that a profile exists. Likewise, a timeout, anti-bot challenge, login wall, or HTTP 403 does **not** prove that it does not exist.
 
-The checker therefore reports three outcomes:
+The interface has exactly two outcomes:
 
-- **Found** — the response contained profile-specific evidence matching the requested username and the final URL still matched that username.
-- **Not found** — the platform returned an explicit missing-profile response (such as HTTP 404/410 or a recognized missing-profile page).
-- **Could not verify** — the platform blocked the request, returned a generic/login page, timed out, redirected elsewhere, or did not provide enough profile evidence.
+- **Found** — the response contained profile-specific evidence matching the requested handle.
+- **Not found** — this automated check did not confirm a matching public profile.
 
-Only confirmed **Found** results receive a clickable profile link. This reduces misleading links and false positives. Even a Found result is not identity verification: usernames can be impersonated, renamed, or reused.
-
-Some platforms intentionally restrict automated requests. Their results may remain **Could not verify** even when the account exists. Open the platform manually to confirm.
+A Not found result is not always proof that the account is absent. Some platforms block automated requests, require JavaScript or login, or change their page structure. The result detail explains when a request was blocked or inconclusive. Only Found results receive clickable profile links. Even a Found result is not identity verification: usernames can be impersonated, renamed, or reused.
 
 ## Features
 
 - Live server-sent progress updates as platform checks complete.
-- Results grouped in a stable order: Found, Could not verify, Not found; alphabetically within each group.
-- Separate filters and counters for each outcome.
-- No clickable profile links for missing or unverified results.
-- Conservative response checks for HTTP status, redirects, exact username URL matching, generic pages, and profile-specific page evidence.
-- Handles @-prefixed profile paths and username-based subdomains.
+- Results grouped in a stable order: Found then Not found; alphabetically within each group.
+- Two filters and counters: Found and Not found.
+- No clickable profile links for Not found results.
+- Response checks for HTTP status, redirects, anti-bot pages, handle matching, and profile-specific page evidence.
+- Handles @-prefixed profile paths, username-based subdomains, and common dot/underscore/hyphen variations.
 - Curated platform URL templates; services requiring numeric IDs or instance-specific handles are intentionally excluded.
 - Concurrent checks with bounded worker count, request timeouts, and response-body limits.
 - Input validation, per-process request throttling, security headers, and a lightweight health endpoint.
