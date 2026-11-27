@@ -64,6 +64,16 @@ class SearchTests(unittest.TestCase):
             "https://www.tiktok.com/@testuser", "testuser"
         ))
 
+    def test_bandcamp_username_subdomain_matches(self):
+        self.assertTrue(all_search._path_contains_username(
+            "https://testuser.bandcamp.com/", "testuser"
+        ))
+
+    def test_substring_username_does_not_match(self):
+        self.assertFalse(all_search._path_contains_username(
+            "https://example.com/testuser123", "testuser"
+        ))
+
     def test_tiktok_profile_data_can_be_found(self):
         response = FakeResponse(
             body='{"userInfo":{"user":{"uniqueId":"testuser","nickname":"Test","follower_count":10}}}',
