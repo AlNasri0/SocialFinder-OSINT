@@ -111,3 +111,12 @@ footer a { color: #8c83e9; text-decoration: none; }
   .checked-label { font-size: 10px; }
   footer { flex-direction: column; }
 }
+
+.progress-panel { border: 1px solid var(--border); border-radius: 14px; background: var(--panel-soft); padding: 16px 18px; margin: 0 0 16px; }
+.progress-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #aab4c9; font-size: 12px; margin-bottom: 10px; }
+.progress-top strong { color: var(--cyan); font: 600 13px "Space Grotesk", sans-serif; }
+.progress-track { height: 9px; background: rgba(119,130,157,.18); border-radius: 999px; overflow: hidden; }
+.progress-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--purple), var(--cyan)); transition: width .2s ease; }
+.progress-caption { color: #66728a; font-size: 11px; margin-top: 8px; }
+.stats-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 600px) { .progress-panel { padding: 13px; } }
