@@ -67,9 +67,19 @@ class SearchTests(unittest.TestCase):
         self.assertLessEqual(all_search.MAX_WORKERS, 12)
         self.assertEqual(all_search.TIMEOUT, (3, 5))
 
-    def test_missing_profile_phrase_is_not_found(self):
-        response = FakeResponse(body="Sorry, this page is not available")
-        self.assertEqual(self.check(response)["status"], "not_found")
+    def test_explicit_profile_missing_phrase_is_reported(self):
+        response = FakeResponse(body="Sorry, this user profile is not available")
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("explicitly indicates", result["detail"])
+
+    def test_generic_page_not_found_text_is_not_profile_evidence(self):
+        response = FakeResponse(
+            body='<html><body>Welcome testuser</body><footer>Page not found</footer></html>'
+        )
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("not enough profile-specific", result["detail"])
 
     def test_profile_evidence_is_found(self):
         result = self.check(FakeResponse())
@@ -102,27 +112,32 @@ class SearchTests(unittest.TestCase):
             "https://testuser.bandcamp.com/", "testuser"
         ))
 
-    def test_dot_and_underscore_variants_match_complete_handles(self):
+    def test_username_punctuation_must_match_exactly(self):
+        self.assertTrue(all_search._path_contains_username(
+            "https://example.com/test_user", "test_user"
+        ))
         for url in (
             "https://example.com/test.user",
-            "https://example.com/test_user",
-            "https://example.com/@test-user",
+            "https://example.com/test-user",
+            "https://example.com/testuser",
         ):
             with self.subTest(url=url):
-                self.assertTrue(all_search._path_contains_username(url, "testuser"))
+                self.assertFalse(all_search._path_contains_username(url, "test_user"))
 
     def test_user_path_format_matches_handle(self):
         self.assertTrue(all_search._path_contains_username(
             "https://example.com/user/test_user/", "testuser"
         ))
 
-    def test_punctuation_variant_in_profile_data_is_recognized(self):
-        body = '{"username":"test_user","profile":"details","followers_count":12}'
-        self.assertTrue(all_search._has_profile_evidence(body, "testuser"))
+    def test_profile_data_requires_exact_punctuation(self):
+        exact = '{"username":"test_user","profile":"details","followers_count":12}'
+        different = '{"username":"testuser","profile":"details","followers_count":12}'
+        self.assertTrue(all_search._has_profile_evidence(exact, "test_user"))
+        self.assertFalse(all_search._has_profile_evidence(different, "test_user"))
 
-    def test_normalized_match_does_not_match_longer_word(self):
+    def test_handle_match_does_not_match_a_longer_word(self):
         self.assertFalse(all_search._body_mentions_username(
-            "the account is testuser123", "test_user"
+            "the account is test_user123", "test_user"
         ))
 
     def test_slash_is_url_structure_not_username_character(self):
