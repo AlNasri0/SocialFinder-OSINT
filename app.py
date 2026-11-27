@@ -1,6 +1,7 @@
 from collections import defaultdict
 from time import monotonic
 from threading import Lock
+import re
 
 from flask import Flask, render_template, request
 from searchers.all_search import search_username
@@ -41,10 +42,8 @@ def home():
 
         if not username:
             error = "Enter a username to search."
-        elif len(username) > 32 or not all(
-            ch.isalnum() or ch in "._-" for ch in username
-        ):
-            error = "Use 1–32 letters, numbers, dots, underscores, or hyphens."
+        elif not re.fullmatch(r"[A-Za-z0-9._-]{1,32}", username):
+            error = "Use 1–32 ASCII letters, numbers, dots, underscores, or hyphens."
         elif is_rate_limited(request.remote_addr or "unknown"):
             error = "Search limit reached. Please wait a minute and try again."
         else:
