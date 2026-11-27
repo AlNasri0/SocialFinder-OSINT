@@ -5,7 +5,7 @@ from searchers import all_search
 
 
 class FakeResponse:
-    def __init__(self, status=200, body="profile content", url="https://example.com/testuser"):
+    def __init__(self, status=200, body='{"username":"testuser","profile":"details"}', url="https://example.com/testuser"):
         self.status_code = status
         self.text = body
         self.url = url
@@ -45,9 +45,15 @@ class SearchTests(unittest.TestCase):
         result = self.check(response)
         self.assertEqual(result["status"], "not_found")
 
-    def test_matching_success_response_is_found(self):
+    def test_matching_success_response_with_profile_evidence_is_found(self):
         result = self.check(FakeResponse())
         self.assertEqual(result["status"], "found")
+
+    def test_generic_200_username_url_is_not_enough(self):
+        response = FakeResponse(body="generic page with no profile data")
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("not confirmed", result["detail"])
 
     def test_tiktok_generic_page_not_confirmed(self):
         response = FakeResponse(body="generic login page", url="https://www.tiktok.com/@testuser")
