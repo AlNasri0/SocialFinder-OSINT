@@ -178,6 +178,12 @@ def _check_site(site, template, username):
             if not 200 <= code < 300:
                 return _result(site, url, detail=f"Not confirmed: the platform returned HTTP {code}. This does not prove the account is absent.", http_status=code)
 
+            content_type = getattr(response, "headers", {}).get("Content-Type", "").lower()
+            if content_type and not any(
+                kind in content_type for kind in ("text/html", "application/xhtml+xml", "application/json")
+            ):
+                return _result(site, url, detail="Not confirmed: the platform returned a non-profile response type.", http_status=code)
+
             body = _read_limited(response)
             if _missing_profile(body):
                 return _result(site, url, "not_found",
