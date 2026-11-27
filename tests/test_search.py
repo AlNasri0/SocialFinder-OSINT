@@ -55,6 +55,19 @@ class SearchTests(unittest.TestCase):
         result = self.check(FakeResponse())
         self.assertEqual(result["status"], "found")
 
+    def test_non_profile_content_type_is_not_found(self):
+        response = FakeResponse()
+        response.headers = {"Content-Type": "image/png"}
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("non-profile response type", result["detail"])
+
+    def test_result_labels_are_exactly_two_outcomes(self):
+        found = all_search._result("Example", "https://example.com/testuser", "found")
+        missing = all_search._result("Example", "https://example.com/testuser", "not_found")
+        self.assertEqual(found["label"], "Found")
+        self.assertEqual(missing["label"], "Not found")
+
     def test_username_in_generic_page_is_not_enough(self):
         response = FakeResponse(body="welcome testuser, generic home page")
         self.assertEqual(self.check(response)["status"], "not_found")
