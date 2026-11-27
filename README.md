@@ -24,7 +24,7 @@ A Not found result is not proof that the account is absent. A clear 404/410 or e
 - 56 curated platform URL templates, with automated HTTPS/placeholder checks for every entry; services requiring numeric IDs or instance-specific handles are intentionally excluded.
 - Concurrent checks with bounded worker count, request timeouts, and response-body limits.
 - Input validation, per-process request throttling, security headers, and a lightweight health endpoint.
-- Regression tests for profile evidence, false-positive cases, response types, result labels, and every platform URL template; GitHub Actions CI.
+- Twitch checks require structured channel login data matching the requested handle; generic Twitch page shells are not accepted as proof. Regression tests cover profile evidence, false-positive cases, response types, result labels, and every platform URL template; GitHub Actions CI.
 
 ## Run locally
 
