@@ -25,3 +25,17 @@ jobs:
           pip install -r requirements.txt
       - name: Run tests
         run: python -m unittest discover -s tests -v
+      - name: Check inline JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          html = Path("templates/index.html").read_text(encoding="utf-8")
+          scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.DOTALL)
+          if len(scripts) != 1:
+              raise SystemExit(f"Expected one inline script, found {len(scripts)}")
+          script = scripts[0].replace("{{ total_sites }}", "56")
+          Path("/tmp/socialfinder-inline.js").write_text(script, encoding="utf-8")
+          PY
+          node --check /tmp/socialfinder-inline.js
