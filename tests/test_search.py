@@ -49,6 +49,20 @@ class SearchTests(unittest.TestCase):
         result = self.check(FakeResponse())
         self.assertEqual(result["status"], "found")
 
+    def test_tiktok_generic_page_not_confirmed(self):
+        response = FakeResponse(body="generic login page", url="https://www.tiktok.com/@testuser")
+        result = self.check(response, "https://www.tiktok.com/@{}")
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("not confirmed", result["detail"])
+
+    def test_tiktok_profile_markers_required(self):
+        response = FakeResponse(
+            body='{"userInfo":{"user":{"uniqueId":"testuser","nickname":"Test"}}}',
+            url="https://www.tiktok.com/@testuser",
+        )
+        result = self.check(response, "https://www.tiktok.com/@{}")
+        self.assertEqual(result["status"], "found")
+
     def test_redirect_to_other_host_not_found(self):
         response = FakeResponse(url="https://login.example.net/testuser")
         result = self.check(response)
