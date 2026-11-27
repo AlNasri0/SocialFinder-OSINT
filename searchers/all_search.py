@@ -55,6 +55,25 @@ def _path_contains_username(url, username):
     return target in decoded_path.split("/") or target in decoded_query
 
 
+# Positive evidence must come from the returned page, not only the URL/status.
+# This intentionally errs on the side of false negatives for sites that hide
+# profile data behind scripts, login walls, or anti-bot challenges.
+PROFILE_EVIDENCE_MARKERS = (
+    'og:type" content="profile', "og:type' content='profile",
+    "profile:username", '"username":', '"screen_name":',
+    '"uniqueid":', '"user_id":', '"userid":', '"profilepage',
+    '"followers_count":', '"follower_count":', '"is_verified":',
+    'schema.org/person', 'schema.org/profilepage',
+)
+
+
+def _has_profile_evidence(body, username):
+    normalized_username = username.lower()
+    has_username = normalized_username in body
+    has_profile_marker = any(marker in body for marker in PROFILE_EVIDENCE_MARKERS)
+    return has_username and has_profile_marker
+
+
 def _check_site(site, template, username):
     url = template.format(quote(username, safe=""))
     host = _host(url)
@@ -97,6 +116,11 @@ def _check_site(site, template, username):
                 if not all(signal in body for signal in profile_signals) or username.lower() not in body:
                     result["detail"] = "TikTok response was blocked or lacked profile data; not confirmed."
                     return result
+
+            if not _has_profile_evidence(body, username):
+                result["detail"] = "The page did not contain clear profile-specific evidence; not confirmed."
+                return result
+
             if final_host != host:
                 result["detail"] = "The link redirected to another domain; profile not confirmed."
                 return result
