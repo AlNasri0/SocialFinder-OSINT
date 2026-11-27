@@ -226,9 +226,12 @@
         alertBox.textContent = error.message || "Search failed. Please try again.";
         alertBox.hidden = false;
       } finally {
-        if (activeController === controller) activeController = null;
-        button.disabled = false;
-        button.innerHTML = '<span>Search profiles</span><span aria-hidden="true">↗</span>';
+        // A cancelled older search must not reset controls owned by a newer search.
+        if (activeController === controller) {
+          activeController = null;
+          button.disabled = false;
+          button.innerHTML = '<span>Search profiles</span><span aria-hidden="true">↗</span>';
+        }
       }
     });
   </script>
