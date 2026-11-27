@@ -20,7 +20,7 @@ A Not found result is not proof that the account is absent. A clear 404/410 or e
 - Two filters and counters: Found and Not found.
 - No clickable profile links for Not found results.
 - Response checks for HTTP status, redirects, anti-bot pages, handle matching, and profile-specific page evidence.
-- Handles @-prefixed profile paths, username-based subdomains, and common dot/underscore/hyphen variations.
+- Handles @-prefixed profile paths and username-based subdomains. Dots, underscores, and hyphens are treated as meaningful characters and must match exactly.
 - 56 curated platform URL templates, with automated HTTPS/placeholder checks for every entry; services requiring numeric IDs or instance-specific handles are intentionally excluded.
 - Concurrent checks with bounded worker count, request timeouts, and response-body limits.
 - Input validation, per-process request throttling, security headers, and a lightweight health endpoint.
