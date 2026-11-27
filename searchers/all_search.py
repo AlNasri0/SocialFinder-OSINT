@@ -55,19 +55,54 @@ NOT_FOUND_PATTERNS = (
 def _host(url):
     return (urlparse(url).hostname or "").lower().removeprefix("www.")
 
+def _normalize_handle(value):
+    """Normalize punctuation commonly varied in profile handles."""
+    return re.sub(r"[._-]", "", unquote(str(value)).strip().lstrip("@").casefold())
+
+
+def _handles_match(candidate, requested):
+    """Compare complete handles while tolerating dots, underscores and hyphens."""
+    candidate = unquote(str(candidate)).strip().strip("/").lstrip("@")
+    requested = unquote(str(requested)).strip().strip("/").lstrip("@")
+    return bool(candidate and requested) and (
+        candidate.casefold() == requested.casefold()
+        or _normalize_handle(candidate) == _normalize_handle(requested)
+    )
+
+
 def _path_contains_username(url, username):
-    """Match a username as a complete URL path segment (including @handles)."""
+    """Match complete URL path/query/subdomain handles, including @handles."""
     parsed = urlparse(url)
-    target = unquote(username).strip().lstrip("@").casefold()
-    segments = [unquote(part).strip().lstrip("@").casefold()
+    segments = [unquote(part).strip().lstrip("@")
                 for part in parsed.path.split("/") if part]
-    query_values = [unquote(part).strip().lstrip("@").casefold()
+    query_values = [unquote(part).strip().lstrip("@")
                     for part in re.split(r"[&=]", parsed.query) if part]
     host_labels = (parsed.hostname or "").lower().removeprefix("www.").split(".")
-    # Some established services (for example Bandcamp and Tumblr) use a
-    # username subdomain instead of a /username/ path.
-    subdomain_match = len(host_labels) > 2 and target in host_labels[:-2]
-    return target in segments or target in query_values or subdomain_match
+    # Some services use a username subdomain (for example name.bandcamp.com).
+    subdomain_match = len(host_labels) > 2 and any(
+        _handles_match(label, username) for label in host_labels[:-2]
+    )
+    return (
+        any(_handles_match(part, username) for part in segments)
+        or any(_handles_match(part, username) for part in query_values)
+        or subdomain_match
+    )
+
+
+def _body_mentions_username(body, username):
+    """Find a complete handle in page text, allowing common punctuation changes."""
+    target = username.strip().lstrip("@")
+    exact = re.search(r"(?<![A-Za-z0-9])" + re.escape(target) + r"(?![A-Za-z0-9])", body, re.I)
+    if exact:
+        return True
+    normalized_body = re.sub(r"[._-]", "", body.casefold())
+    normalized_target = _normalize_handle(target)
+    if not normalized_target:
+        return False
+    return re.search(
+        r"(?<![a-z0-9])" + re.escape(normalized_target) + r"(?![a-z0-9])",
+        normalized_body,
+    ) is not None
 
 def _read_limited(response):
     chunks, size = [], 0
@@ -82,8 +117,9 @@ def _read_limited(response):
     return b"".join(chunks).decode(encoding, errors="replace").casefold()
 
 def _has_profile_evidence(body, username):
-    target = username.casefold()
-    return target in body and any(marker in body for marker in PROFILE_MARKERS)
+    return _body_mentions_username(body, username) and any(
+        marker in body for marker in PROFILE_MARKERS
+    )
 
 def _missing_profile(body):
     return any(re.search(pattern, body, flags=re.IGNORECASE)
@@ -141,8 +177,16 @@ def _check_site(site, template, username):
             if not _has_profile_evidence(body, username):
                 return _result(site, url, detail="The page did not contain reliable profile-specific data.", http_status=code)
 
-            return _result(site, final_url, "found",
-                           "The page returned profile-specific data matching this username.", code)
+            exact_handle = any(
+                unquote(part).strip().lstrip("@").casefold() == username.casefold()
+                for part in urlparse(final_url).path.split("/") if part
+            )
+            detail = (
+                "The page returned profile-specific data matching this username."
+                if exact_handle else
+                "The page returned profile-specific data; its handle differs only by dots, underscores, or hyphens."
+            )
+            return _result(site, final_url, "found", detail, code)
 
     except requests.Timeout:
         return _result(site, url, detail="The request timed out; account status is unknown.")
