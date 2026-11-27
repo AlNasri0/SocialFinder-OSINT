@@ -63,7 +63,11 @@ def _path_contains_username(url, username):
                 for part in parsed.path.split("/") if part]
     query_values = [unquote(part).strip().lstrip("@").casefold()
                     for part in re.split(r"[&=]", parsed.query) if part]
-    return target in segments or target in query_values
+    host_labels = (parsed.hostname or "").lower().removeprefix("www.").split(".")
+    # Some established services (for example Bandcamp and Tumblr) use a
+    # username subdomain instead of a /username/ path.
+    subdomain_match = len(host_labels) > 2 and target in host_labels[:-2]
+    return target in segments or target in query_values or subdomain_match
 
 def _read_limited(response):
     chunks, size = [], 0
