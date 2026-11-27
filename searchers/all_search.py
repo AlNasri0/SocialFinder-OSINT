@@ -127,11 +127,11 @@ def _has_twitch_profile_evidence(body, username):
     """Require Twitch-specific structured channel data, not its generic SPA shell."""
     escaped = re.escape(username)
     login_matches = re.search(
-        r'"(?:login|user_login|channelLogin)"\\s*:\\s*"' + escaped + r'"',
+        r'"(?:login|user_login|channelLogin)"\s*:\s*"' + escaped + r'"',
         body,
         flags=re.IGNORECASE,
     )
-    has_channel_id = re.search(r'"channelid"\\s*:', body, flags=re.IGNORECASE)
+    has_channel_id = re.search(r'"channelid"\s*:', body, flags=re.IGNORECASE)
     return bool(login_matches and has_channel_id)
 
 def _missing_profile(body):
