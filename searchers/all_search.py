@@ -56,7 +56,6 @@ PROFILE_MARKERS = (
 # footer text or unrelated links on otherwise valid pages.
 NOT_FOUND_PATTERNS = (
     r"this user(?:'s|’s)? profile (?:is )?not available",
-    r"(?:the )?user (?:was )?not found",
     r"profile not found",
     r"account not found",
     r"this account (?:does not|doesn't) exist",
