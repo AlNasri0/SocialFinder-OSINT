@@ -27,6 +27,19 @@ BLOCK_PAGE_MARKERS = (
     "access denied", "temporarily blocked",
 )
 
+# On these platforms, generic HTML shells frequently include the requested
+# handle or follower-related text. Require stronger platform profile metadata.
+STRICT_PROFILE_HOSTS = {
+    "instagram.com", "facebook.com", "linkedin.com", "x.com", "twitter.com",
+    "snapchat.com", "youtube.com", "discord.com", "telegram.org",
+    "pinterest.com", "threads.net",
+}
+STRICT_PROFILE_MARKERS = (
+    'og:type" content="profile', "profile:username", '"uniqueid":',
+    '"unique_id":', '"screen_name":', '"userinfo":', '"user_info":',
+    '"profile_id":', '"channelid":', '"channel_id":',
+)
+
 # Strong, profile-oriented page markers. The requested username must also occur
 # in the response, and the final URL must still identify the requested profile.
 PROFILE_MARKERS = (
@@ -180,6 +193,10 @@ def _check_site(site, template, username):
                 return _result(site, url, detail="Not confirmed: the final URL did not retain the requested handle.", http_status=code)
             if not _has_profile_evidence(body, username):
                 return _result(site, url, detail="Not confirmed: the page did not expose enough profile-specific information. The account may still exist.", http_status=code)
+            if requested_host in STRICT_PROFILE_HOSTS and not any(
+                marker in body for marker in STRICT_PROFILE_MARKERS
+            ):
+                return _result(site, url, detail="Not confirmed: this platform returned a generic page rather than strong profile metadata. The account may still exist.", http_status=code)
 
             exact_handle = any(
                 unquote(part).strip().lstrip("@").casefold() == username.casefold()
