@@ -1,16 +1,16 @@
 from collections import defaultdict
 from time import monotonic
 from threading import Lock
+import json
 import re
 
-from flask import Flask, render_template, request
-from searchers.all_search import search_username
+from flask import Flask, Response, render_template, request, stream_with_context
+from data.sites import SITES
+from searchers.all_search import iter_username_results
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 2 * 1024  # Search requests should be tiny.
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024
 
-# Lightweight per-process throttling. For multi-worker deployments, use a shared
-# store (e.g. Redis) so limits are consistent across workers.
 _RATE_LIMIT = 6
 _RATE_WINDOW = 60
 _requests = defaultdict(list)
@@ -29,41 +29,34 @@ def is_rate_limited(client_ip):
         return False
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def home():
-    results = []
-    username = ""
-    error = None
-    searched = False
+    return render_template("index.html", total_sites=len(SITES))
 
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        searched = True
 
-        if not username:
-            error = "Enter a username to search."
-        elif not re.fullmatch(r"[A-Za-z0-9._-]{1,32}", username):
-            error = "Use 1–32 ASCII letters, numbers, dots, underscores, or hyphens."
-        elif is_rate_limited(request.remote_addr or "unknown"):
-            error = "Search limit reached. Please wait a minute and try again."
-        else:
-            results = search_username(username)
+@app.route("/stream", methods=["POST"])
+def stream_search():
+    username = request.form.get("username", "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,32}", username):
+        return Response("Invalid username. Use 1–32 letters, numbers, dots, underscores, or hyphens.\n", status=400)
+    if is_rate_limited(request.remote_addr or "unknown"):
+        return Response("Search limit reached. Please wait a minute and try again.\n", status=429)
 
-    found_count = sum(result["status"] == "found" for result in results)
-    not_found_count = sum(result["status"] == "not_found" for result in results)
-    unverified_count = sum(result["status"] == "unverified" for result in results)
+    @stream_with_context
+    def generate():
+        total = len(SITES)
+        completed = 0
+        yield "data: " + json.dumps({"type": "start", "total": total, "username": username}) + "\n\n"
+        for result in iter_username_results(username):
+            completed += 1
+            yield "data: " + json.dumps({"type": "result", "completed": completed, "total": total, "result": result}) + "\n\n"
+        yield "data: " + json.dumps({"type": "complete", "completed": completed, "total": total}) + "\n\n"
 
-    return render_template(
-        "index.html",
-        results=results,
-        found_count=found_count,
-        not_found_count=not_found_count,
-        unverified_count=unverified_count,
-        username=username,
-        error=error,
-        searched=searched,
-    )
+    return Response(generate(), mimetype="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=False, threaded=True)
