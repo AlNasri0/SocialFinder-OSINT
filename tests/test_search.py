@@ -160,7 +160,24 @@ class SearchTests(unittest.TestCase):
 
     def test_redirect_to_another_host_is_not_found(self):
         response = FakeResponse(url="https://login.example.net/testuser")
-        self.assertEqual(self.check(response)["status"], "not_found")
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("redirected away", result["detail"])
+
+    def test_redirected_404_is_not_reported_as_missing_profile(self):
+        response = FakeResponse(
+            status=404, body="Page not found",
+            url="https://login.example.net/testuser"
+        )
+        result = self.check(response)
+        self.assertIn("redirected away", result["detail"])
+
+    def test_security_challenge_overrides_missing_profile_boilerplate(self):
+        response = FakeResponse(
+            body="Access denied. Profile not found. Verify you are human.",
+        )
+        result = self.check(response)
+        self.assertIn("security or anti-bot", result["detail"])
 
     def test_redirect_to_wrong_path_is_not_found(self):
         response = FakeResponse(url="https://example.com/home")
