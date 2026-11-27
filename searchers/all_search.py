@@ -199,14 +199,16 @@ def _check_site(site, template, username):
             # profile exists.
             if not _path_contains_username(final_url, username):
                 return _result(site, url, detail="Not confirmed: the final URL did not retain the requested handle.", http_status=code)
-            if not _has_profile_evidence(body, username):
-                return _result(site, url, detail="Not confirmed: the page did not expose enough profile-specific information. The account may still exist.", http_status=code)
-            if requested_host == "twitch.tv" and not _has_twitch_profile_evidence(body, username):
-                return _result(site, url, detail="Not confirmed: Twitch returned a generic channel page without structured login data matching this username. The account may still exist.", http_status=code)
-            if requested_host in STRICT_PROFILE_HOSTS and not any(
-                marker in body for marker in STRICT_PROFILE_MARKERS
-            ):
-                return _result(site, url, detail="Not confirmed: this platform returned a generic page rather than strong profile metadata. The account may still exist.", http_status=code)
+            if requested_host == "twitch.tv":
+                if not _has_twitch_profile_evidence(body, username):
+                    return _result(site, url, detail="Not confirmed: Twitch returned a generic channel page without structured login data matching this username. The account may still exist.", http_status=code)
+            else:
+                if not _has_profile_evidence(body, username):
+                    return _result(site, url, detail="Not confirmed: the page did not expose enough profile-specific information. The account may still exist.", http_status=code)
+                if requested_host in STRICT_PROFILE_HOSTS and not any(
+                    marker in body for marker in STRICT_PROFILE_MARKERS
+                ):
+                    return _result(site, url, detail="Not confirmed: this platform returned a generic page rather than strong profile metadata. The account may still exist.", http_status=code)
 
             exact_handle = any(
                 unquote(part).strip().lstrip("@").casefold() == username.casefold()
