@@ -69,6 +69,34 @@ class SearchTests(unittest.TestCase):
             "https://testuser.bandcamp.com/", "testuser"
         ))
 
+    def test_dot_and_underscore_variants_match_complete_handles(self):
+        for url in (
+            "https://example.com/test.user",
+            "https://example.com/test_user",
+            "https://example.com/@test-user",
+        ):
+            with self.subTest(url=url):
+                self.assertTrue(all_search._path_contains_username(url, "testuser"))
+
+    def test_user_path_format_matches_handle(self):
+        self.assertTrue(all_search._path_contains_username(
+            "https://example.com/user/test_user/", "testuser"
+        ))
+
+    def test_punctuation_variant_in_profile_data_is_recognized(self):
+        body = '{"username":"test_user","profile":"details","followers_count":12}'
+        self.assertTrue(all_search._has_profile_evidence(body, "testuser"))
+
+    def test_normalized_match_does_not_match_longer_word(self):
+        self.assertFalse(all_search._body_mentions_username(
+            "the account is testuser123", "test_user"
+        ))
+
+    def test_slash_is_url_structure_not_username_character(self):
+        self.assertTrue(all_search._path_contains_username(
+            "https://example.com/@testuser/videos", "testuser"
+        ))
+
     def test_substring_username_does_not_match(self):
         self.assertFalse(all_search._path_contains_username(
             "https://example.com/testuser123", "testuser"
