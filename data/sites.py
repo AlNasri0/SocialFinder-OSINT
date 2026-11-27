@@ -1,33 +1,23 @@
 SITES = {
-    # Direct public profile URL patterns. Platforms with ambiguous IDs, search
-    # pages, or username formats that cannot be safely constructed are omitted.
+    # Curated list of widely used platforms with direct public profile URLs.
+    # Platforms whose URL formats require IDs or whose public pages are too
+    # unreliable to verify automatically are intentionally excluded.
     "🐙 GitHub": "https://github.com/{}",
-    "🦊 GitLab": "https://gitlab.com/{}",
     "👽 Reddit": "https://www.reddit.com/user/{}/",
-    "✍️ Medium": "https://medium.com/@{}",
-    "🏆 HackerOne": "https://hackerone.com/{}",
-    "📊 Kaggle": "https://www.kaggle.com/{}",
-    "💻 DEV": "https://dev.to/{}",
     "🎵 TikTok": "https://www.tiktok.com/@{}",
     "📺 Twitch": "https://www.twitch.tv/{}",
-    "🎬 Vimeo": "https://vimeo.com/{}",
+    "🎬 YouTube": "https://www.youtube.com/@{}",
     "🎧 SoundCloud": "https://soundcloud.com/{}",
-    "💰 Patreon": "https://www.patreon.com/{}",
-    "🚀 Product Hunt": "https://www.producthunt.com/@{}",
+    "✍️ Medium": "https://medium.com/@{}",
+    "🔗 Linktree": "https://linktr.ee/{}",
+    "🦊 GitLab": "https://gitlab.com/{}",
+    "📝 DEV": "https://dev.to/{}",
     "🎨 Behance": "https://www.behance.net/{}",
     "🏀 Dribbble": "https://dribbble.com/{}",
     "📷 Flickr": "https://www.flickr.com/people/{}",
     "🖼️ Imgur": "https://imgur.com/user/{}",
-    "🔗 Linktree": "https://linktr.ee/{}",
-    "📝 CodePen": "https://codepen.io/{}",
-    "🧠 LeetCode": "https://leetcode.com/{}",
-    "⚔️ Codeforces": "https://codeforces.com/profile/{}",
-    "🐳 Docker Hub": "https://hub.docker.com/u/{}",
-    "📦 PyPI": "https://pypi.org/user/{}",
-    "📦 npm": "https://www.npmjs.com/~{}",
-    "📚 Goodreads": "https://www.goodreads.com/{}",
     "⭐ Letterboxd": "https://letterboxd.com/{}",
     "🎵 Last.fm": "https://www.last.fm/user/{}",
-    "🛒 Etsy": "https://www.etsy.com/shop/{}",
-    "🔬 ResearchGate": "https://www.researchgate.net/profile/{}",
+    "🎮 Patreon": "https://www.patreon.com/{}",
+    "🎞️ Vimeo": "https://vimeo.com/{}",
 }
