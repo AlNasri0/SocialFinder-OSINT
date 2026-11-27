@@ -112,7 +112,18 @@
       const link = document.createElement("a"); link.className = "visit-link";
       link.href = item.url; link.target = "_blank"; link.rel = "noopener noreferrer";
       link.textContent = "Open profile ↗";
-      bottom.append(code, link);
+      if (item.status === "found") {
+        link.href = item.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Open verified profile ↗";
+        bottom.append(code, link);
+      } else {
+        const noLink = document.createElement("span");
+        noLink.className = "visit-link visit-link-disabled";
+        noLink.textContent = "No verified profile link";
+        bottom.append(code, noLink);
+      }
       card.append(top, title, detail, bottom);
       if (activeFilter !== "all" && activeFilter !== item.status) card.hidden = true;
       return card;
@@ -171,7 +182,16 @@
             const event = JSON.parse(line.slice(6));
             if (event.type === "result") {
               resultCounts[event.result.status] += 1;
-              grid.append(createCard(event.result));
+              const card = createCard(event.result);
+              // Keep Found cards grouped at the top and alphabetically sorted
+              // within each group, even while streamed checks are still arriving.
+              const cards = [...grid.querySelectorAll(".result-card"), card];
+              cards.sort((a, b) => {
+                const rank = (status) => status === "found" ? 0 : 1;
+                return rank(a.dataset.status) - rank(b.dataset.status)
+                  || a.querySelector("h3").textContent.localeCompare(b.querySelector("h3").textContent);
+              });
+              grid.replaceChildren(...cards);
               updateCounts(); updateProgress(event.completed, event.total);
             } else if (event.type === "complete") {
               updateProgress(event.completed, event.total);
