@@ -95,7 +95,7 @@ def _check_site(site, template, username):
                 result["detail"] = "The returned page did not match the requested username."
                 return result
 
-            result.update(status="found", label="Found",
+            result.update(status="found", label="Found", url=final_url,
                           detail="The response matched the profile URL. Please confirm it is the correct account.")
             return result
     except requests.Timeout:
