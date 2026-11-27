@@ -25,7 +25,7 @@ NOT_FOUND_MARKERS = (
 # Sites known to commonly return generic pages/challenges even for nonexistent accounts.
 GENERIC_RESPONSE_HOSTS = {
     "instagram.com", "facebook.com", "linkedin.com", "x.com", "twitter.com",
-    "tiktok.com", "snapchat.com", "youtube.com", "discord.com", "telegram.org",
+    "snapchat.com", "youtube.com", "discord.com", "telegram.org",
     "pinterest.com",
 }
 
@@ -88,6 +88,15 @@ def _check_site(site, template, username):
             if host in GENERIC_RESPONSE_HOSTS:
                 result["detail"] = "This site returns generic/login pages; existence not confirmed."
                 return result
+
+            # TikTok frequently serves generic HTML, login walls, or challenge pages.
+            # Only accept a positive response when its page contains profile-specific
+            # data, not merely a 200 response and a username-shaped URL.
+            if host == "tiktok.com":
+                profile_signals = ("userinfo", "uniqueid", "nickname")
+                if not all(signal in body for signal in profile_signals) or username.lower() not in body:
+                    result["detail"] = "TikTok response was blocked or lacked profile data; not confirmed."
+                    return result
             if final_host != host:
                 result["detail"] = "The link redirected to another domain; profile not confirmed."
                 return result
