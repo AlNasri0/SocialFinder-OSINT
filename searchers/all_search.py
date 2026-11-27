@@ -10,8 +10,8 @@ import re
 import requests
 from data.sites import SITES
 
-MAX_WORKERS = 8
-TIMEOUT = (4, 8)
+MAX_WORKERS = 10
+TIMEOUT = (3, 5)
 MAX_BODY_BYTES = 100_000
 USER_AGENT = (
     "SocialFinder/2.0 (+https://github.com/AlNasri0/SocialFinder-OSINT) "
