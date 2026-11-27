@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Check public username profile URLs across social and community platforms.">
+  <meta name="description" content="Check public profile URLs across social and community platforms.">
   <title>Social Finder — Username Search</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,88 +14,177 @@
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
   <main class="shell">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="Social Finder home">
-        <span class="brand-mark">⌕</span><span>social<span class="brand-accent">finder</span></span>
-      </a>
+      <a class="brand" href="/" aria-label="Social Finder home"><span class="brand-mark">⌕</span><span>social<span class="brand-accent">finder</span></span></a>
       <span class="top-label"><span class="live-dot"></span> PUBLIC PROFILE CHECKER</span>
     </header>
-
     <section class="hero">
       <div class="eyebrow"><span class="eyebrow-line"></span> SEARCH ACROSS THE WEB</div>
       <h1>One username.<br><span>Many destinations.</span></h1>
       <p class="hero-copy">Check public profile links across social networks, communities, and creator platforms.</p>
-      <form class="search-form" method="POST" action="/" autocomplete="off">
+      <form class="search-form" id="search-form" autocomplete="off">
         <span class="search-icon" aria-hidden="true">⌕</span>
-        <input id="username" name="username" type="text" maxlength="32"
-          pattern="[A-Za-z0-9._-]{1,32}" value="{{ username }}"
-          placeholder="Enter a username…" required aria-label="Username">
+        <input id="username" name="username" type="text" maxlength="32" pattern="[A-Za-z0-9._-]{1,32}" placeholder="Enter a username…" required aria-label="Username">
         <button type="submit" id="search-button"><span>Search profiles</span><span aria-hidden="true">↗</span></button>
       </form>
       <div class="input-hint">Letters, numbers, dots, underscores, and hyphens · 32 characters max</div>
-      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+      <div class="alert" id="alert" role="alert" hidden></div>
     </section>
 
-    {% if searched and not error %}
-    <section class="results-section" id="results">
+    <section class="results-section" id="results" hidden>
       <div class="results-heading">
-        <div><div class="eyebrow">SEARCH REPORT</div><h2>Results for <span class="query">@{{ username }}</span></h2></div>
-        <span class="checked-label">{{ results|length }} platforms checked</span>
+        <div><div class="eyebrow">SEARCH REPORT</div><h2>Results for <span class="query" id="query"></span></h2></div>
+        <span class="checked-label" id="checked-label">Preparing search…</span>
+      </div>
+      <div class="progress-panel" id="progress-panel">
+        <div class="progress-top"><span id="progress-message">Connecting to platforms…</span><strong id="progress-percent">0%</strong></div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-caption" id="progress-caption">0 of {{ total_sites }} platforms checked</div>
       </div>
       <div class="stats-grid">
-        <div class="stat stat-found"><span class="stat-number">{{ found_count }}</span><span class="stat-label">Likely found</span><span class="stat-icon">✓</span></div>
-        <div class="stat stat-unknown"><span class="stat-number">{{ unverified_count }}</span><span class="stat-label">Unverified</span><span class="stat-icon">?</span></div>
-        <div class="stat stat-missing"><span class="stat-number">{{ not_found_count }}</span><span class="stat-label">Not found</span><span class="stat-icon">×</span></div>
+        <div class="stat stat-found"><span class="stat-number" id="found-count">0</span><span class="stat-label">Found</span><span class="stat-icon">✓</span></div>
+        <div class="stat stat-missing"><span class="stat-number" id="missing-count">0</span><span class="stat-label">Not found</span><span class="stat-icon">×</span></div>
       </div>
       <div class="filter-row" role="group" aria-label="Filter results">
-        <button class="filter active" data-filter="all">All <span>{{ results|length }}</span></button>
-        <button class="filter" data-filter="found">Likely found <span>{{ found_count }}</span></button>
-        <button class="filter" data-filter="unverified">Unverified <span>{{ unverified_count }}</span></button>
-        <button class="filter" data-filter="not_found">Not found <span>{{ not_found_count }}</span></button>
+        <button class="filter active" data-filter="all">All <span id="all-count">0</span></button>
+        <button class="filter" data-filter="found">Found <span id="found-filter-count">0</span></button>
+        <button class="filter" data-filter="not_found">Not found <span id="missing-filter-count">0</span></button>
       </div>
-      <div class="results-grid" id="results-grid">
-        {% for result in results %}
-        <article class="result-card status-{{ result.status }}" data-status="{{ result.status }}">
-          <div class="card-top">
-            <div class="platform-avatar">{{ result.site.split(' ', 1)[0] }}</div>
-            <span class="status-pill status-pill-{{ result.status }}">
-              {% if result.status == "found" %}<span>●</span> Likely found
-              {% elif result.status == "not_found" %}<span>●</span> Not found
-              {% else %}<span>●</span> Unverified{% endif %}
-            </span>
-          </div>
-          <h3>{{ result.site.split(' ', 1)[1] if ' ' in result.site else result.site }}</h3>
-          <p class="card-detail">{{ result.detail }}</p>
-          <div class="card-bottom">
-            {% if result.http_status %}<span class="http-code">HTTP {{ result.http_status }}</span>{% else %}<span class="http-code">No response</span>{% endif %}
-            <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer" class="visit-link">Open profile <span>↗</span></a>
-          </div>
-        </article>
-        {% endfor %}
-      </div>
-      {% if results|length == 0 %}<div class="empty">No sites were configured to check.</div>{% endif %}
+      <div class="results-grid" id="results-grid"></div>
     </section>
-    {% endif %}
 
     <section class="notice">
       <span class="notice-icon">ⓘ</span>
-      <p><strong>Results are estimates.</strong> Platforms may block automated checks, show login pages, or return misleading responses. “Likely found” is not confirmation—open the profile to verify. Only public profile URLs are checked; no private data is accessed.</p>
+      <p><strong>Important accuracy note.</strong> “Found” means the site returned a matching profile URL response, not identity verification. “Not found” also includes blocked, timed-out, or inconclusive checks—those cannot reliably prove an account is absent. Some platforms may redirect to login pages. Links are direct profile-format URLs, but external websites can change their routing at any time.</p>
     </section>
-    <footer><span>Social Finder</span><span>Built for public profile discovery · <a href="https://github.com/AlNasri0/SocialFinder-OSINT" target="_blank" rel="noopener noreferrer">Open source ↗</a></span></footer>
+    <footer><span>Social Finder</span><span>Public profile URL checker · <a href="https://github.com/AlNasri0/SocialFinder-OSINT" target="_blank" rel="noopener noreferrer">Open source ↗</a></span></footer>
   </main>
   <script>
-    const filterButtons = document.querySelectorAll(".filter");
-    const cards = document.querySelectorAll(".result-card");
-    filterButtons.forEach(button => button.addEventListener("click", () => {
-      filterButtons.forEach(item => item.classList.remove("active"));
-      button.classList.add("active");
-      const filter = button.dataset.filter;
-      cards.forEach(card => card.hidden = filter !== "all" && card.dataset.status !== filter);
-    }));
-    const form = document.querySelector(".search-form");
-    const submit = document.getElementById("search-button");
-    if (form && submit) form.addEventListener("submit", () => {
-      submit.disabled = true;
-      submit.innerHTML = '<span>Checking…</span><span class="spinner"></span>';
+    const form = document.getElementById("search-form");
+    const input = document.getElementById("username");
+    const button = document.getElementById("search-button");
+    const alertBox = document.getElementById("alert");
+    const resultsSection = document.getElementById("results");
+    const grid = document.getElementById("results-grid");
+    const progressFill = document.getElementById("progress-fill");
+    const progressPercent = document.getElementById("progress-percent");
+    const progressCaption = document.getElementById("progress-caption");
+    const progressMessage = document.getElementById("progress-message");
+    const progressTrack = document.getElementById("progress-track");
+    const checkedLabel = document.getElementById("checked-label");
+    let resultCounts = {found: 0, not_found: 0};
+    let activeFilter = "all";
+
+    function updateProgress(done, total) {
+      const percent = total ? Math.round(done / total * 100) : 0;
+      progressFill.style.width = percent + "%";
+      progressPercent.textContent = percent + "%";
+      progressTrack.setAttribute("aria-valuenow", String(percent));
+      progressCaption.textContent = done + " of " + total + " platforms checked";
+      checkedLabel.textContent = done + " / " + total + " checked";
+      progressMessage.textContent = done === total ? "Checks complete" : "Checking profile URLs…";
+    }
+
+    function updateCounts() {
+      document.getElementById("found-count").textContent = resultCounts.found;
+      document.getElementById("missing-count").textContent = resultCounts.not_found;
+      document.getElementById("found-filter-count").textContent = resultCounts.found;
+      document.getElementById("missing-filter-count").textContent = resultCounts.not_found;
+      document.getElementById("all-count").textContent = resultCounts.found + resultCounts.not_found;
+    }
+
+    function createCard(item) {
+      const card = document.createElement("article");
+      card.className = "result-card status-" + item.status;
+      card.dataset.status = item.status;
+      const top = document.createElement("div"); top.className = "card-top";
+      const avatar = document.createElement("div"); avatar.className = "platform-avatar";
+      avatar.textContent = item.site.split(" ")[0];
+      const pill = document.createElement("span");
+      pill.className = "status-pill status-pill-" + item.status;
+      pill.textContent = item.status === "found" ? "✓ Found" : "× Not found";
+      top.append(avatar, pill);
+      const title = document.createElement("h3");
+      title.textContent = item.site.split(" ").slice(1).join(" ") || item.site;
+      const detail = document.createElement("p"); detail.className = "card-detail"; detail.textContent = item.detail;
+      const bottom = document.createElement("div"); bottom.className = "card-bottom";
+      const code = document.createElement("span"); code.className = "http-code";
+      code.textContent = item.http_status ? "HTTP " + item.http_status : "No response";
+      const link = document.createElement("a"); link.className = "visit-link";
+      link.href = item.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+      link.textContent = "Open profile ↗";
+      bottom.append(code, link);
+      card.append(top, title, detail, bottom);
+      if (activeFilter !== "all" && activeFilter !== item.status) card.hidden = true;
+      return card;
+    }
+
+    document.querySelectorAll(".filter").forEach(filterButton => {
+      filterButton.addEventListener("click", () => {
+        document.querySelectorAll(".filter").forEach(btn => btn.classList.remove("active"));
+        filterButton.classList.add("active");
+        activeFilter = filterButton.dataset.filter;
+        grid.querySelectorAll(".result-card").forEach(card => {
+          card.hidden = activeFilter !== "all" && card.dataset.status !== activeFilter;
+        });
+      });
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const username = input.value.trim();
+      if (!/^[A-Za-z0-9._-]{1,32}$/.test(username)) {
+        alertBox.textContent = "Use 1–32 letters, numbers, dots, underscores, or hyphens.";
+        alertBox.hidden = false; return;
+      }
+      alertBox.hidden = true;
+      button.disabled = true;
+      button.innerHTML = '<span>Checking…</span><span class="spinner"></span>';
+      resultsSection.hidden = false;
+      document.getElementById("query").textContent = "@" + username;
+      grid.replaceChildren();
+      resultCounts = {found: 0, not_found: 0};
+      activeFilter = "all"; updateCounts(); updateProgress(0, {{ total_sites }});
+      document.querySelectorAll(".filter").forEach(btn => btn.classList.toggle("active", btn.dataset.filter === "all"));
+
+      try {
+        const response = await fetch("/stream", {
+          method: "POST",
+          headers: {"Content-Type": "application/x-www-form-urlencoded"},
+          body: new URLSearchParams({username})
+        });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || "Search request failed.");
+        }
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const {value, done} = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, {stream: true});
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const eventText of events) {
+            const line = eventText.split("\n").find(line => line.startsWith("data: "));
+            if (!line) continue;
+            const event = JSON.parse(line.slice(6));
+            if (event.type === "result") {
+              resultCounts[event.result.status] += 1;
+              grid.append(createCard(event.result));
+              updateCounts(); updateProgress(event.completed, event.total);
+            } else if (event.type === "complete") {
+              updateProgress(event.completed, event.total);
+            }
+          }
+        }
+      } catch (error) {
+        alertBox.textContent = error.message || "Search failed. Please try again.";
+        alertBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<span>Search profiles</span><span aria-hidden="true">↗</span>';
+      }
     });
   </script>
 </body>
