@@ -113,6 +113,9 @@
       const link = document.createElement("a"); link.className = "visit-link";
       link.textContent = "Open matching profile ↗";
       if (item.status === "found") {
+        link.href = item.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
         bottom.append(code, link);
       } else {
         const noLink = document.createElement("span");
