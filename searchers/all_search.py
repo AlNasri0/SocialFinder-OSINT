@@ -61,8 +61,6 @@ NOT_FOUND_PATTERNS = (
     r"account not found",
     r"this account (?:does not|doesn't) exist",
     r"no such user",
-    r"page not found",
-    r"this page (?:isn't|is not) available",
     r"could(?: not|n't) find this account",
     r"this profile (?:does not|doesn't) exist",
 )
@@ -70,19 +68,11 @@ NOT_FOUND_PATTERNS = (
 def _host(url):
     return (urlparse(url).hostname or "").lower().removeprefix("www.")
 
-def _normalize_handle(value):
-    """Normalize punctuation commonly varied in profile handles."""
-    return re.sub(r"[._-]", "", unquote(str(value)).strip().lstrip("@").casefold())
-
-
 def _handles_match(candidate, requested):
-    """Compare complete handles while tolerating dots, underscores and hyphens."""
+    """Compare complete handles exactly, ignoring case and an optional @ prefix."""
     candidate = unquote(str(candidate)).strip().strip("/").lstrip("@")
     requested = unquote(str(requested)).strip().strip("/").lstrip("@")
-    return bool(candidate and requested) and (
-        candidate.casefold() == requested.casefold()
-        or _normalize_handle(candidate) == _normalize_handle(requested)
-    )
+    return bool(candidate and requested) and candidate.casefold() == requested.casefold()
 
 
 def _path_contains_username(url, username):
@@ -107,16 +97,12 @@ def _path_contains_username(url, username):
 def _body_mentions_username(body, username):
     """Find a complete handle in page text, allowing common punctuation changes."""
     target = username.strip().lstrip("@")
-    exact = re.search(r"(?<![A-Za-z0-9])" + re.escape(target) + r"(?![A-Za-z0-9])", body, re.I)
-    if exact:
-        return True
-    normalized_body = re.sub(r"[._-]", "", body.casefold())
-    normalized_target = _normalize_handle(target)
-    if not normalized_target:
-        return False
+    # Punctuation is meaningful in usernames. Never collapse dots, underscores,
+    # or hyphens: doing so can attribute a different account to this handle.
     return re.search(
-        r"(?<![a-z0-9])" + re.escape(normalized_target) + r"(?![a-z0-9])",
-        normalized_body,
+        r"(?<![A-Za-z0-9])" + re.escape(target) + r"(?![A-Za-z0-9])",
+        body,
+        flags=re.IGNORECASE,
     ) is not None
 
 def _read_limited(response):
