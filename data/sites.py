@@ -50,4 +50,12 @@ SITES = {
     "🧩 Codeberg": "https://codeberg.org/{}",
     "🪣 Bitbucket": "https://bitbucket.org/{}",
     "📚 Goodreads": "https://www.goodreads.com/{}",
+    "🤗 Hugging Face": "https://huggingface.co/{}",
+    "📊 Kaggle": "https://www.kaggle.com/{}",
+    "⚔️ Codewars": "https://www.codewars.com/users/{}",
+    "💡 LeetCode": "https://leetcode.com/u/{}/",
+    "🚀 Product Hunt": "https://www.producthunt.com/@{}",
+    "☕ Buy Me a Coffee": "https://www.buymeacoffee.com/{}",
+    "📖 Wattpad": "https://www.wattpad.com/user/{}",
+    "🛠️ Instructables": "https://www.instructables.com/member/{}/",
 }
