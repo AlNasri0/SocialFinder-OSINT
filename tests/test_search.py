@@ -5,7 +5,7 @@ from searchers import all_search
 
 
 class FakeResponse:
-    def __init__(self, status=200, body="profile content", url="https://example.com/test"):
+    def __init__(self, status=200, body="profile content", url="https://example.com/testuser"):
         self.status_code = status
         self.text = body
         self.url = url
@@ -30,27 +30,38 @@ class SearchTests(unittest.TestCase):
         result = self.check(FakeResponse(status=404))
         self.assertEqual(result["status"], "not_found")
 
-    def test_403_is_unverified(self):
+    def test_403_is_not_confirmed(self):
         result = self.check(FakeResponse(status=403))
-        self.assertEqual(result["status"], "unverified")
+        self.assertEqual(result["status"], "not_found")
+        self.assertIn("not confirmed", result["detail"])
 
-    def test_known_generic_page_host_is_unverified(self):
+    def test_generic_page_host_not_marked_found(self):
         response = FakeResponse(url="https://instagram.com/testuser")
         result = self.check(response, "https://instagram.com/{}")
-        self.assertEqual(result["status"], "unverified")
+        self.assertEqual(result["status"], "not_found")
 
-    def test_profile_missing_marker(self):
+    def test_missing_marker(self):
         response = FakeResponse(body="Sorry, this page is not available")
         result = self.check(response)
         self.assertEqual(result["status"], "not_found")
 
-    def test_success_response_is_likely_found(self):
+    def test_matching_success_response_is_found(self):
         result = self.check(FakeResponse())
         self.assertEqual(result["status"], "found")
 
+    def test_redirect_to_other_host_not_found(self):
+        response = FakeResponse(url="https://login.example.net/testuser")
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+
+    def test_page_path_without_username_not_found(self):
+        response = FakeResponse(url="https://example.com/home")
+        result = self.check(response)
+        self.assertEqual(result["status"], "not_found")
+
     def test_invalid_username_returns_no_results(self):
-        self.assertEqual(all_search.search_username("bad username"), [])
-        self.assertEqual(all_search.search_username(""), [])
+        self.assertEqual(list(all_search.iter_username_results("bad username")), [])
+        self.assertEqual(list(all_search.iter_username_results("")), [])
 
     def test_parallel_results_are_sorted(self):
         fake_sites = {"Beta": "https://beta.test/{}", "Alpha": "https://alpha.test/{}"}
@@ -65,6 +76,7 @@ class SearchTests(unittest.TestCase):
         ):
             results = all_search.search_username("valid_user")
         self.assertEqual([r["site"] for r in results], ["Alpha", "Beta"])
+
 
 if __name__ == "__main__":
     unittest.main()
