@@ -1,22 +1,37 @@
 # SocialFinder-OSINT
 
-A Flask-based public username profile URL checker across a curated list of social, developer, creator, and community platforms.
+A Flask-based public username profile checker for a curated set of social, creator, developer, gaming, and community platforms.
 
-**Accuracy note:** “Found” is a conservative heuristic, not proof of identity or account ownership. “Not found” includes missing-page responses and inconclusive cases (for example, access blocks, rate limits, timeouts, or generic pages) so the UI stays limited to the two requested labels without claiming certainty. Open the link to verify. External websites can change routing and login requirements at any time; no tool can guarantee every generated profile link will land on a visible profile.
+## Accuracy comes first
+
+A website returning HTTP 200 does **not** prove that a profile exists. Likewise, a timeout, anti-bot challenge, login wall, or HTTP 403 does **not** prove that it does not exist.
+
+The checker therefore reports three outcomes:
+
+- **Found** — the response contained profile-specific evidence matching the requested username and the final URL still matched that username.
+- **Not found** — the platform returned an explicit missing-profile response (such as HTTP 404/410 or a recognized missing-profile page).
+- **Could not verify** — the platform blocked the request, returned a generic/login page, timed out, redirected elsewhere, or did not provide enough profile evidence.
+
+Only confirmed **Found** results receive a clickable profile link. This reduces misleading links and false positives. Even a Found result is not identity verification: usernames can be impersonated, renamed, or reused.
+
+Some platforms intentionally restrict automated requests. Their results may remain **Could not verify** even when the account exists. Open the platform manually to confirm.
 
 ## Features
 
-- Live progress bar driven by checks completing on the server (not a fake timer).
-- Two user-facing states: **Found** and **Not found**.
-- Conservative checks for HTTP errors, missing-profile text, generic pages, cross-domain redirects, and profile URL mismatches.
-- Curated direct profile URL formats; ambiguous username/ID formats and unreliable search/redirect endpoints are omitted.
-- Concurrent checks with modest concurrency, timeouts, and limited response-body reading.
-- Username validation, per-process request throttling, responsive UI, and result filters.
-- Checks public profile URLs only; does not access private information.
+- Live server-sent progress updates as platform checks complete.
+- Results grouped in a stable order: Found, Could not verify, Not found; alphabetically within each group.
+- Separate filters and counters for each outcome.
+- No clickable profile links for missing or unverified results.
+- Conservative response checks for HTTP status, redirects, exact username URL matching, generic pages, and profile-specific page evidence.
+- Handles @-prefixed profile paths and username-based subdomains.
+- Curated platform URL templates; services requiring numeric IDs or instance-specific handles are intentionally excluded.
+- Concurrent checks with bounded worker count, request timeouts, and response-body limits.
+- Input validation, per-process request throttling, security headers, and a lightweight health endpoint.
+- Unit tests and GitHub Actions CI.
 
 ## Run locally
 
-Python 3.10+ recommended.
+Python 3.10+ is recommended.
 
 ```bash
 git clone https://github.com/AlNasri0/SocialFinder-OSINT.git
@@ -29,7 +44,7 @@ Activate the environment:
 - Windows: `.venv\\Scripts\\activate`
 - macOS/Linux: `source .venv/bin/activate`
 
-Install and start:
+Install and run:
 
 ```bash
 pip install -r requirements.txt
@@ -38,16 +53,30 @@ python app.py
 
 Open http://127.0.0.1:5000.
 
-## Deploy
-
-For production, run behind a production WSGI server and disable debug mode:
+## Run tests
 
 ```bash
-gunicorn --workers 2 --threads 4 --timeout 45 app:app
+python -m unittest discover -s tests -v
 ```
 
-The in-memory rate limit is per process and resets on restart. For multiple workers/instances, use a shared limiter. Do not increase concurrency to evade platform rate limits.
+Tests also run automatically on pushes and pull requests to `main` through GitHub Actions.
+
+## Deployment
+
+For production, use a WSGI server and a reverse proxy with HTTPS:
+
+```bash
+gunicorn --workers 2 --threads 4 --timeout 60 app:app
+```
+
+The built-in in-memory rate limiter is per process and resets on restart. For multi-worker or multi-instance deployments, replace it with a shared limiter (for example Redis-backed). Configure trusted proxy handling carefully before relying on forwarded client IP headers.
+
+Do not increase concurrency to bypass platform rate limits or access controls.
+
+## Responsible use
+
+This project checks publicly accessible profile pages only. Use it lawfully and respectfully. Do not use results to harass, stalk, dox, or make consequential decisions about people. The tool does not identify account owners and cannot guarantee that every platform permits automated checking.
 
 ## License
 
-No license is currently specified in this repository. Add one if you intend to grant reuse rights.
+No license is currently specified. Add a license if you intend to grant others permission to reuse, modify, or distribute this project.
