@@ -47,6 +47,26 @@ class SearchTests(unittest.TestCase):
         result = self.check(response, "https://www.instagram.com/{}/")
         self.assertNotEqual(result["status"], "found")
 
+    def test_generic_instagram_metadata_is_not_enough(self):
+        response = FakeResponse(
+            body='<meta property="og:title" content="testuser"> testuser followers_count',
+            url="https://www.instagram.com/testuser/",
+        )
+        result = self.check(response, "https://www.instagram.com/{}/")
+        self.assertEqual(result["status"], "not_found")
+
+    def test_instagram_profile_marker_is_accepted(self):
+        response = FakeResponse(
+            body='<meta property="og:type" content="profile"><meta property="profile:username" content="testuser"> testuser',
+            url="https://www.instagram.com/testuser/",
+        )
+        result = self.check(response, "https://www.instagram.com/{}/")
+        self.assertEqual(result["status"], "found")
+
+    def test_request_limits_are_bounded_for_smooth_searches(self):
+        self.assertLessEqual(all_search.MAX_WORKERS, 12)
+        self.assertEqual(all_search.TIMEOUT, (3, 5))
+
     def test_missing_profile_phrase_is_not_found(self):
         response = FakeResponse(body="Sorry, this page is not available")
         self.assertEqual(self.check(response)["status"], "not_found")
