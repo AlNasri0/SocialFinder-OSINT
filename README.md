@@ -11,7 +11,7 @@ The interface has exactly two outcomes:
 - **Found** — the response contained profile-specific evidence matching the requested handle.
 - **Not found** — this automated check did not confirm a matching public profile.
 
-A Not found result is not always proof that the account is absent. Some platforms block automated requests, require JavaScript or login, or change their page structure. The result detail explains when a request was blocked or inconclusive. Only Found results receive clickable profile links. Even a Found result is not identity verification: usernames can be impersonated, renamed, or reused.
+A Not found result is not proof that the account is absent. A clear 404/410 or explicit unavailable-profile message is evidence that the page is missing; blocks, rate limits, timeouts, server errors, non-profile responses, and generic pages can also produce Not found because the interface intentionally has only two labels. Read the per-site detail to understand what happened. Only Found results receive clickable profile links. Even a Found result is not identity verification: usernames can be impersonated, renamed, or reused.
 
 ## Features
 
@@ -21,10 +21,10 @@ A Not found result is not always proof that the account is absent. Some platform
 - No clickable profile links for Not found results.
 - Response checks for HTTP status, redirects, anti-bot pages, handle matching, and profile-specific page evidence.
 - Handles @-prefixed profile paths, username-based subdomains, and common dot/underscore/hyphen variations.
-- Curated platform URL templates; services requiring numeric IDs or instance-specific handles are intentionally excluded.
+- 56 curated platform URL templates, with automated HTTPS/placeholder checks for every entry; services requiring numeric IDs or instance-specific handles are intentionally excluded.
 - Concurrent checks with bounded worker count, request timeouts, and response-body limits.
 - Input validation, per-process request throttling, security headers, and a lightweight health endpoint.
-- Unit tests and GitHub Actions CI.
+- Regression tests for profile evidence, false-positive cases, response types, result labels, and every platform URL template; GitHub Actions CI.
 
 ## Run locally
 
