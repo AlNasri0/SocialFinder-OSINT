@@ -42,13 +42,11 @@
       </div>
       <div class="stats-grid">
         <div class="stat stat-found"><span class="stat-number" id="found-count">0</span><span class="stat-label">Found</span><span class="stat-icon">✓</span></div>
-        <div class="stat stat-unknown"><span class="stat-number" id="unverified-count">0</span><span class="stat-label">Could not verify</span><span class="stat-icon">?</span></div>
         <div class="stat stat-missing"><span class="stat-number" id="missing-count">0</span><span class="stat-label">Not found</span><span class="stat-icon">×</span></div>
       </div>
       <div class="filter-row" role="group" aria-label="Filter results">
         <button class="filter active" data-filter="all">All <span id="all-count">0</span></button>
         <button class="filter" data-filter="found">Found <span id="found-filter-count">0</span></button>
-        <button class="filter" data-filter="unverified">Could not verify <span id="unverified-filter-count">0</span></button>
         <button class="filter" data-filter="not_found">Not found <span id="missing-filter-count">0</span></button>
       </div>
       <div class="results-grid" id="results-grid"></div>
@@ -56,7 +54,7 @@
 
     <section class="notice">
       <span class="notice-icon">ⓘ</span>
-      <p><strong>Important accuracy note.</strong> “Found” means the response contained profile-specific evidence matching the requested username. “Not found” is reserved for explicit missing-profile responses. “Could not verify” means the site blocked the request, returned a generic page, timed out, or did not provide enough evidence. A missing result is not proof that a person has no account, and a matching username is not identity verification.</p>
+      <p><strong>Important accuracy note.</strong> “Found” means the response contained profile-specific evidence matching the requested username. “Not found” is reserved for explicit missing-profile responses. “Not found” means this automated check could not confirm a matching public profile. Some platforms block automated requests, so this result is not proof that an account does not exist. A matching username is not identity verification.</p>
     </section>
     <footer><span>Social Finder</span><span>Public profile URL checker · <a href="https://github.com/AlNasri0/SocialFinder-OSINT" target="_blank" rel="noopener noreferrer">Open source ↗</a></span></footer>
   </main>
@@ -73,7 +71,7 @@
     const progressMessage = document.getElementById("progress-message");
     const progressTrack = document.getElementById("progress-track");
     const checkedLabel = document.getElementById("checked-label");
-    let resultCounts = {found: 0, unverified: 0, not_found: 0};
+    let resultCounts = {found: 0, not_found: 0};
     let activeFilter = "all";
 
     function updateProgress(done, total) {
@@ -88,12 +86,10 @@
 
     function updateCounts() {
       document.getElementById("found-count").textContent = resultCounts.found;
-      document.getElementById("unverified-count").textContent = resultCounts.unverified;
       document.getElementById("missing-count").textContent = resultCounts.not_found;
       document.getElementById("found-filter-count").textContent = resultCounts.found;
-      document.getElementById("unverified-filter-count").textContent = resultCounts.unverified;
       document.getElementById("missing-filter-count").textContent = resultCounts.not_found;
-      document.getElementById("all-count").textContent = resultCounts.found + resultCounts.unverified + resultCounts.not_found;
+      document.getElementById("all-count").textContent = resultCounts.found + resultCounts.not_found;
     }
 
     function createCard(item) {
@@ -105,8 +101,7 @@
       avatar.textContent = item.site.split(" ")[0];
       const pill = document.createElement("span");
       pill.className = "status-pill status-pill-" + item.status;
-      pill.textContent = item.status === "found" ? "✓ Found"
-        : item.status === "not_found" ? "× Not found" : "? Could not verify";
+      pill.textContent = item.status === "found" ? "✓ Found" : "× Not found";
       top.append(avatar, pill);
       const title = document.createElement("h3");
       title.textContent = item.site.split(" ").slice(1).join(" ") || item.site;
@@ -126,8 +121,7 @@
       } else {
         const noLink = document.createElement("span");
         noLink.className = "visit-link visit-link-disabled";
-        noLink.textContent = item.status === "not_found"
-          ? "No profile link — not found" : "No verified link";
+        noLink.textContent = "No profile link — not found";
         bottom.append(code, noLink);
       }
       card.append(top, title, detail, bottom);
@@ -159,7 +153,7 @@
       resultsSection.hidden = false;
       document.getElementById("query").textContent = "@" + username;
       grid.replaceChildren();
-      resultCounts = {found: 0, unverified: 0, not_found: 0};
+      resultCounts = {found: 0, not_found: 0};
       activeFilter = "all"; updateCounts(); updateProgress(0, {{ total_sites }});
       document.querySelectorAll(".filter").forEach(btn => btn.classList.toggle("active", btn.dataset.filter === "all"));
 
@@ -193,7 +187,7 @@
               // within each group, even while streamed checks are still arriving.
               const cards = [...grid.querySelectorAll(".result-card"), card];
               cards.sort((a, b) => {
-                const rank = (status) => status === "found" ? 0 : status === "unverified" ? 1 : 2;
+                const rank = (status) => status === "found" ? 0 : 1;
                 return rank(a.dataset.status) - rank(b.dataset.status)
                   || a.querySelector("h3").textContent.localeCompare(b.querySelector("h3").textContent);
               });
