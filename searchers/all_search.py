@@ -18,23 +18,25 @@ USER_AGENT = (
     "public profile availability checker"
 )
 
-# These hosts commonly return login shells, bot challenges, or generic pages.
-# A 200 response from them is not enough to claim that a profile exists.
-GENERIC_RESPONSE_HOSTS = {
-    "instagram.com", "facebook.com", "linkedin.com", "x.com", "twitter.com",
-    "snapchat.com", "youtube.com", "discord.com", "telegram.org",
-    "pinterest.com", "threads.net",
-}
+# Login shells and anti-bot responses are not profile evidence. A matching
+# profile URL alone is also insufficient: the page must contain handle-specific
+# profile metadata below.
+BLOCK_PAGE_MARKERS = (
+    "captcha", "verify you are human", "unusual traffic",
+    "enable javascript and cookies to continue", "checking your browser",
+    "access denied", "temporarily blocked",
+)
 
 # Strong, profile-oriented page markers. The requested username must also occur
 # in the response, and the final URL must still identify the requested profile.
 PROFILE_MARKERS = (
     'og:type" content="profile', "og:type' content='profile",
-    "profile:username", "vcard-username", "user-login",
+    "og:title", "profile:username", "vcard-username", "user-login",
     '"uniqueid":', '"unique_id":', '"screen_name":',
     '"followers_count":', '"follower_count":', '"is_verified":',
     '"profilepage', "schema.org/person", "schema.org/profilepage",
-    '"userinfo":', '"user_info":',
+    '"userinfo":', '"user_info":', '"userprofile":', '"profileuser":',
+    'itemprop="name"', 'data-testid="user-', 'class="profile',
 )
 
 # Explicit missing-profile phrases. Kept narrow to avoid matching generic
@@ -125,14 +127,16 @@ def _missing_profile(body):
     return any(re.search(pattern, body, flags=re.IGNORECASE)
                for pattern in NOT_FOUND_PATTERNS)
 
-def _result(site, url, status="unverified", detail="The platform did not provide enough information to verify this profile.", http_status=None):
-    labels = {
-        "found": "Found",
-        "not_found": "Not found",
-        "unverified": "Could not verify",
-    }
+def _result(site, url, status="not_found", detail="No matching public profile was confirmed.", http_status=None):
+    """Return one of the two requested display states.
+
+    not_found means no profile was confirmed by this automated check; details
+    explain when the site blocked the request so it is not mistaken for proof
+    that the account does not exist.
+    """
+    label = "Found" if status == "found" else "Not found"
     return {
-        "site": site, "url": url, "status": status, "label": labels[status],
+        "site": site, "url": url, "status": status, "label": label,
         "detail": detail, "http_status": http_status,
     }
 
@@ -155,11 +159,11 @@ def _check_site(site, template, username):
                 return _result(site, url, "not_found",
                                "The platform returned an HTTP missing-page response.", code)
             if code in (401, 403, 429):
-                return _result(site, url, detail="The platform restricted or rate-limited the check; account status is unknown.", http_status=code)
+                return _result(site, url, detail="Not confirmed: the platform blocked or rate-limited automated checking. This does not prove the account is absent.", http_status=code)
             if code >= 500:
-                return _result(site, url, detail="The platform encountered a server error; account status is unknown.", http_status=code)
+                return _result(site, url, detail="Not confirmed: the platform returned a server error. This does not prove the account is absent.", http_status=code)
             if not 200 <= code < 300:
-                return _result(site, url, detail=f"Unexpected HTTP response ({code}); account status is unknown.", http_status=code)
+                return _result(site, url, detail=f"Not confirmed: the platform returned HTTP {code}. This does not prove the account is absent.", http_status=code)
 
             body = _read_limited(response)
             if _missing_profile(body):
@@ -169,13 +173,13 @@ def _check_site(site, template, username):
             # Do not accept login pages, generic homepages, or cross-domain
             # redirects as evidence that the requested profile exists.
             if final_host != requested_host:
-                return _result(site, url, detail="The profile URL redirected to a different domain; account status is unknown.", http_status=code)
-            if requested_host in GENERIC_RESPONSE_HOSTS:
-                return _result(site, url, detail="This platform returned a generic or login page; account status is unknown.", http_status=code)
+                return _result(site, url, detail="Not confirmed: the profile URL redirected away from the platform. The account may still exist.", http_status=code)
+            if any(marker in body for marker in BLOCK_PAGE_MARKERS):
+                return _result(site, url, detail="Not confirmed: the platform showed a security or anti-bot page. The account may still exist.", http_status=code)
             if not _path_contains_username(final_url, username):
-                return _result(site, url, detail="The final page URL does not match the requested username.", http_status=code)
+                return _result(site, url, detail="Not confirmed: the final URL did not retain the requested handle.", http_status=code)
             if not _has_profile_evidence(body, username):
-                return _result(site, url, detail="The page did not contain reliable profile-specific data.", http_status=code)
+                return _result(site, url, detail="Not confirmed: the page did not expose enough profile-specific information. The account may still exist.", http_status=code)
 
             exact_handle = any(
                 unquote(part).strip().lstrip("@").casefold() == username.casefold()
@@ -189,11 +193,11 @@ def _check_site(site, template, username):
             return _result(site, final_url, "found", detail, code)
 
     except requests.Timeout:
-        return _result(site, url, detail="The request timed out; account status is unknown.")
+        return _result(site, url, detail="Not confirmed: the request timed out. The account may still exist.")
     except requests.RequestException:
-        return _result(site, url, detail="A network error prevented verification; account status is unknown.")
+        return _result(site, url, detail="Not confirmed: a network error interrupted the check. The account may still exist.")
     except Exception:
-        return _result(site, url, detail="The check failed unexpectedly; account status is unknown.")
+        return _result(site, url, detail="Not confirmed: an unexpected error interrupted the check.")
 
 def iter_username_results(username):
     """Yield completed checks as they finish, for server-sent UI progress."""
@@ -210,11 +214,11 @@ def iter_username_results(username):
                 yield future.result()
             except Exception:
                 url = template.format(quote(username, safe=""))
-                yield _result(site, url, detail="An unexpected error prevented verification.")
+                yield _result(site, url, detail="Not confirmed: an unexpected error interrupted the check.")
 
 def search_username(username):
-    """Return results grouped Found, Could not verify, Not found; alphabetical within groups."""
-    rank = {"found": 0, "unverified": 1, "not_found": 2}
+    """Return results grouped Found then Not found, alphabetically within groups."""
+    rank = {"found": 0, "not_found": 1}
     return sorted(
         list(iter_username_results(username)),
         key=lambda item: (rank.get(item["status"], 1), item["site"].casefold()),
