@@ -1,180 +1,102 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>SocialFinder</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Check public username profile URLs across social and community platforms.">
+  <title>Social Finder — Username Search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Social Finder home">
+        <span class="brand-mark">⌕</span><span>social<span class="brand-accent">finder</span></span>
+      </a>
+      <span class="top-label"><span class="live-dot"></span> PUBLIC PROFILE CHECKER</span>
+    </header>
 
-<div class="container">
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-line"></span> SEARCH ACROSS THE WEB</div>
+      <h1>One username.<br><span>Many destinations.</span></h1>
+      <p class="hero-copy">Check public profile links across social networks, communities, and creator platforms.</p>
+      <form class="search-form" method="POST" action="/" autocomplete="off">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="username" name="username" type="text" maxlength="32"
+          pattern="[A-Za-z0-9._-]{1,32}" value="{{ username }}"
+          placeholder="Enter a username…" required aria-label="Username">
+        <button type="submit" id="search-button"><span>Search profiles</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="input-hint">Letters, numbers, dots, underscores, and hyphens · 32 characters max</div>
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+    </section>
 
-    <div class="hero">
-
-        <h1>🔍 SocialFinder</h1>
-
-        <p>
-            Search usernames across multiple platforms
-        </p>
-
-    </div>
-
-    <div class="search-container">
-
-        <form method="POST">
-
-            <input
-                class="form-control search-input"
-                type="text"
-                name="username"
-                placeholder="Enter Username"
-                required>
-
-            <button
-                type="submit"
-                class="btn-search">
-
-                Search
-
-            </button>
-
-        </form>
-
-    </div>
-
-    {% if results %}
-
-    <div class="stats">
-
-        <div class="stat-card">
-            <h2>{{ found_count }}</h2>
-            <p>Profiles Found</p>
-        </div>
-
-        <div class="stat-card">
-            <h2>{{ results|length }}</h2>
-            <p>Sites Checked</p>
-        </div>
-
-        <div class="stat-card">
-            <h2>{{ username }}</h2>
-            <p>Username</p>
-        </div>
-
-    </div>
-
-    <!-- FOUND SECTION -->
-
-    <h2 class="results-title text-success">
-        ✅ Found Profiles
-    </h2>
-
-    <div class="row g-4">
-
+    {% if searched and not error %}
+    <section class="results-section" id="results">
+      <div class="results-heading">
+        <div><div class="eyebrow">SEARCH REPORT</div><h2>Results for <span class="query">@{{ username }}</span></h2></div>
+        <span class="checked-label">{{ results|length }} platforms checked</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat stat-found"><span class="stat-number">{{ found_count }}</span><span class="stat-label">Likely found</span><span class="stat-icon">✓</span></div>
+        <div class="stat stat-unknown"><span class="stat-number">{{ unverified_count }}</span><span class="stat-label">Unverified</span><span class="stat-icon">?</span></div>
+        <div class="stat stat-missing"><span class="stat-number">{{ not_found_count }}</span><span class="stat-label">Not found</span><span class="stat-icon">×</span></div>
+      </div>
+      <div class="filter-row" role="group" aria-label="Filter results">
+        <button class="filter active" data-filter="all">All <span>{{ results|length }}</span></button>
+        <button class="filter" data-filter="found">Likely found <span>{{ found_count }}</span></button>
+        <button class="filter" data-filter="unverified">Unverified <span>{{ unverified_count }}</span></button>
+        <button class="filter" data-filter="not_found">Not found <span>{{ not_found_count }}</span></button>
+      </div>
+      <div class="results-grid" id="results-grid">
         {% for result in results %}
-
-            {% if result.found %}
-
-            <div class="col-md-4">
-
-                <div class="card card-custom">
-
-                    <div class="card-body">
-
-                        <div class="platform-name">
-                            {{ result.site }}
-                        </div>
-
-                        <div class="found">
-                            ✅ Profile Found
-                        </div>
-
-                        <a
-                            href="{{ result.url }}"
-                            target="_blank"
-                            class="profile-btn">
-
-                            Open Profile
-
-                        </a>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            {% endif %}
-
+        <article class="result-card status-{{ result.status }}" data-status="{{ result.status }}">
+          <div class="card-top">
+            <div class="platform-avatar">{{ result.site.split(' ', 1)[0] }}</div>
+            <span class="status-pill status-pill-{{ result.status }}">
+              {% if result.status == "found" %}<span>●</span> Likely found
+              {% elif result.status == "not_found" %}<span>●</span> Not found
+              {% else %}<span>●</span> Unverified{% endif %}
+            </span>
+          </div>
+          <h3>{{ result.site.split(' ', 1)[1] if ' ' in result.site else result.site }}</h3>
+          <p class="card-detail">{{ result.detail }}</p>
+          <div class="card-bottom">
+            {% if result.http_status %}<span class="http-code">HTTP {{ result.http_status }}</span>{% else %}<span class="http-code">No response</span>{% endif %}
+            <a href="{{ result.url }}" target="_blank" rel="noopener noreferrer" class="visit-link">Open profile <span>↗</span></a>
+          </div>
+        </article>
         {% endfor %}
-
-    </div>
-
-    <br>
-    <br>
-
-    <!-- NOT FOUND SECTION -->
-
-    <h2 class="results-title text-danger">
-        ❌ Not Found
-    </h2>
-
-    <div class="row g-4">
-
-        {% for result in results %}
-
-            {% if not result.found %}
-
-            <div class="col-md-4">
-
-                <div class="card card-custom">
-
-                    <div class="card-body">
-
-                        <div class="platform-name">
-                            {{ result.site }}
-                        </div>
-
-                        <div class="not-found">
-                            ❌ Not Found
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            {% endif %}
-
-        {% endfor %}
-
-    </div>
-
+      </div>
+      {% if results|length == 0 %}<div class="empty">No sites were configured to check.</div>{% endif %}
+    </section>
     {% endif %}
 
-    <footer>
-
-        <p>
-            SocialFinder OSINT Explorer
-        </p>
-
-    </footer>
-
-</div>
-
+    <section class="notice">
+      <span class="notice-icon">ⓘ</span>
+      <p><strong>Results are estimates.</strong> Platforms may block automated checks, show login pages, or return misleading responses. “Likely found” is not confirmation—open the profile to verify. Only public profile URLs are checked; no private data is accessed.</p>
+    </section>
+    <footer><span>Social Finder</span><span>Built for public profile discovery · <a href="https://github.com/AlNasri0/SocialFinder-OSINT" target="_blank" rel="noopener noreferrer">Open source ↗</a></span></footer>
+  </main>
+  <script>
+    const filterButtons = document.querySelectorAll(".filter");
+    const cards = document.querySelectorAll(".result-card");
+    filterButtons.forEach(button => button.addEventListener("click", () => {
+      filterButtons.forEach(item => item.classList.remove("active"));
+      button.classList.add("active");
+      const filter = button.dataset.filter;
+      cards.forEach(card => card.hidden = filter !== "all" && card.dataset.status !== filter);
+    }));
+    const form = document.querySelector(".search-form");
+    const submit = document.getElementById("search-button");
+    if (form && submit) form.addEventListener("submit", () => {
+      submit.disabled = true;
+      submit.innerHTML = '<span>Checking…</span><span class="spinner"></span>';
+    });
+  </script>
 </body>
 </html>
